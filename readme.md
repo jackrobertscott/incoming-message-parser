@@ -20,7 +20,7 @@ import { parseJson } from 'incoming-message-parser';
 
 async function handleRequest(request: IncomingMessage) {
   try {
-    const jsonData = await parseJson(request);
+    const jsonData = await parseJson(request, request.headers["content-type"]);
     // Use jsonData here
   } catch (error) {
     console.error('Error parsing JSON:', error);
@@ -36,7 +36,7 @@ import { parseMultipart } from 'incoming-message-parser';
 
 async function handleRequest(request: IncomingMessage) {
   try {
-    const formData = await parseMultipart(request);
+    const formData = await parseMultipart(request, request.headers["content-type"]);
     // Use formData here
   } catch (error) {
     console.error('Error parsing form data:', error);
@@ -46,11 +46,11 @@ async function handleRequest(request: IncomingMessage) {
 
 ## API
 
-### `parseJson(request: IncomingMessage): Promise<any>`
+### `parseJson(requestStream: Readable, contentTypeHeader: string): Promise<any>`
 
 Parses a JSON body from an HTTP request. Throws an error if the content type is not `application/json`.
 
-### `parseMultipart(request: IncomingMessage): Promise<{ [key: string]: string | FileData }>`
+### `parseMultipart(requestStream: Readable, contentTypeHeader: string): Promise<{ [key: string]: string | FileData }>`
 
 Parses a `multipart/form-data` body from an HTTP request. Returns an object containing the parsed data. Throws an error if the content type is not `multipart/form-data` or if the boundary is not found.
 

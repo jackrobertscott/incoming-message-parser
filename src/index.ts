@@ -1,4 +1,4 @@
-import { IncomingMessage } from "http"
+import { Readable } from "stream"
 
 /**
  * Interface representing the data structure for file information.
@@ -12,18 +12,22 @@ export interface FileData {
 
 /**
  * Parses a JSON body from an HTTP request.
- * @param request - The incoming HTTP request.
+ * @param requestStream - The incoming HTTP request.
+ * @param contentTypeHeader - The content type header on the request.
  * @returns A Promise resolving to the parsed JSON object.
  * @throws If the content type is not application/json.
  */
-export async function parseJson(request: IncomingMessage): Promise<any> {
-  if (!request.headers["content-type"]?.startsWith("application/json"))
+export async function parseJson(
+  requestStream: Readable,
+  contentTypeHeader: string
+): Promise<any> {
+  if (!contentTypeHeader?.startsWith("application/json"))
     throw new Error("Invalid content type")
   let data = ""
   return new Promise((resolve, reject) => {
-    request.on("data", (chunk) => (data += chunk))
-    request.on("error", reject)
-    request.on("end", () => {
+    requestStream.on("data", (chunk) => (data += chunk))
+    requestStream.on("error", reject)
+    requestStream.on("end", () => {
       try {
         resolve(JSON.parse(data))
       } catch (e) {
@@ -35,24 +39,26 @@ export async function parseJson(request: IncomingMessage): Promise<any> {
 
 /**
  * Parses a multipart/form-data body from an HTTP request.
- * @param request - The incoming HTTP request.
+ * @param requestStream - The incoming HTTP request.
+ * @param contentTypeHeader - The content type header on the request.
  * @returns A Promise resolving to an object containing the parsed data.
  * @throws If the content type is not multipart/form-data or if the boundary is not found.
  */
 export async function parseMultipart(
-  request: IncomingMessage
+  requestStream: Readable,
+  contentTypeHeader: string
 ): Promise<{ [key: string]: string | FileData }> {
-  if (!request.headers["content-type"]?.startsWith("multipart/form-data"))
+  if (!contentTypeHeader.startsWith("multipart/form-data"))
     throw new Error("Invalid content type")
-  const match = request.headers["content-type"]?.match(/boundary=([^;]+)/i)
+  const match = contentTypeHeader.match(/boundary=([^;]+)/i)
   const boundary = match && match[1]
   if (!boundary) throw new Error("No boundary found")
   const buffer: Buffer[] = []
   const data: { [key: string]: string | FileData } = {}
   return new Promise((resolve, reject) => {
-    request.on("data", (chunk) => buffer.push(chunk))
-    request.on("error", reject)
-    request.on("end", () => {
+    requestStream.on("data", (chunk) => buffer.push(chunk))
+    requestStream.on("error", reject)
+    requestStream.on("end", () => {
       try {
         const fullBuffer = Buffer.concat(buffer)
         const boundaryBuffer = Buffer.from(`--${boundary}`)
